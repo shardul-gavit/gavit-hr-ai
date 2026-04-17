@@ -259,7 +259,7 @@ export function generateReply(input: string, ctx: BotContext): BotReply {
   if (matched) return matched.reply(ctx);
 
   return {
-    content: `I'm not sure I understood "${text}". Try one of the suggestions below:`,
+    content: "I didn't quite get that. Try one of the quick actions below:",
     actions: quickActions[ctx.role].slice(0, 3),
   };
 }
