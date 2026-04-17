@@ -11,7 +11,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, breadcrumbs }: PageHeaderProps) {
   const location = useLocation();
-  const auto = breadcrumbs ?? location.pathname.split("/").filter(Boolean).map((s) => ({ label: s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, " ") }));
+  const auto: { label: string; to?: string }[] = breadcrumbs ?? location.pathname.split("/").filter(Boolean).map((s) => ({ label: s.charAt(0).toUpperCase() + s.slice(1).replace(/-/g, " ") }));
 
   return (
     <div className="mb-6 animate-in-up">
