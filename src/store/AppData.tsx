@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from "react";
 import { companies as seedCompanies, employees as seedEmployees, tickets as seedTickets, leaveRequests as seedLeaves, attendance as seedAttendance, payroll as seedPayroll, invoices as seedInvoices, announcements as seedAnnouncements, notifications as seedNotifications, candidates as seedCandidates, jobOpenings as seedJobs, auditLogs as seedAudit } from "@/data/seed";
-import type { Company, Employee, Ticket, LeaveRequest, AttendanceRecord, PayrollEntry, Invoice, Announcement, NotificationItem, Candidate, JobOpening, AuditLog, TicketStatus, TicketReply, Role } from "@/types";
+import type { Company, Employee, Ticket, LeaveRequest, AttendanceRecord, PayrollEntry, Invoice, Announcement, NotificationItem, Candidate, JobOpening, AuditLog, TicketStatus, TicketReply } from "@/types";
 
 interface AppDataState {
   companies: Company[];
@@ -25,6 +25,7 @@ interface AppDataState {
 
   addTicket: (t: Omit<Ticket, "id" | "createdAt" | "updatedAt" | "replies">) => Ticket;
   updateTicketStatus: (id: string, status: TicketStatus) => void;
+  assignTicket: (id: string, assignee: string) => void;
   addTicketReply: (id: string, reply: Omit<TicketReply, "id" | "createdAt">) => void;
 
   addLeave: (l: Omit<LeaveRequest, "id" | "appliedAt">) => void;
@@ -32,9 +33,11 @@ interface AppDataState {
 
   toggleAttendance: (employeeId: string, employeeName: string, companyId: string) => "in" | "out";
   todayAttendance: (employeeId: string) => AttendanceRecord | undefined;
+  setAttendanceStatus: (id: string, status: AttendanceRecord["status"]) => void;
 
   updatePayrollStatus: (id: string, status: PayrollEntry["status"]) => void;
   runPayroll: () => void;
+  approveAllPayroll: () => void;
 
   addInvoice: (i: Omit<Invoice, "id">) => void;
   updateInvoice: (id: string, patch: Partial<Invoice>) => void;
@@ -97,6 +100,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const updateTicketStatus: AppDataState["updateTicketStatus"] = useCallback((id, status) => {
     setTickets((p) => p.map((t) => (t.id === id ? { ...t, status, updatedAt: nowIso() } : t)));
   }, []);
+  const assignTicket: AppDataState["assignTicket"] = useCallback((id, assignee) => {
+    setTickets((p) => p.map((t) => (t.id === id ? { ...t, assignedTo: assignee, status: t.status === "Open" ? "Assigned" : t.status, updatedAt: nowIso() } : t)));
+  }, []);
   const addTicketReply: AppDataState["addTicketReply"] = useCallback((id, reply) => {
     setTickets((p) => p.map((t) => (t.id === id ? { ...t, replies: [...t.replies, { ...reply, id: `r-${Date.now()}`, createdAt: nowIso() }], updatedAt: nowIso() } : t)));
   }, []);
@@ -130,11 +136,18 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [attendance]);
 
+  const setAttendanceStatus: AppDataState["setAttendanceStatus"] = useCallback((id, status) => {
+    setAttendance((p) => p.map((a) => (a.id === id ? { ...a, status } : a)));
+  }, []);
+
   const updatePayrollStatus: AppDataState["updatePayrollStatus"] = useCallback((id, status) => {
     setPayroll((p) => p.map((e) => (e.id === id ? { ...e, status } : e)));
   }, []);
   const runPayroll = useCallback(() => {
     setPayroll((p) => p.map((e) => (e.status === "Draft" ? { ...e, status: "Pending Approval" } : e)));
+  }, []);
+  const approveAllPayroll = useCallback(() => {
+    setPayroll((p) => p.map((e) => (e.status === "Pending Approval" ? { ...e, status: "Approved" } : e)));
   }, []);
 
   const addInvoice: AppDataState["addInvoice"] = useCallback((i) => {
@@ -174,10 +187,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       companies, employees, tickets, leaves, attendance, payroll, invoices, announcements, notifications, candidates, jobs, audit,
       addCompany, updateCompany,
       addEmployee, updateEmployee, deleteEmployee,
-      addTicket, updateTicketStatus, addTicketReply,
+      addTicket, updateTicketStatus, assignTicket, addTicketReply,
       addLeave, updateLeaveStatus,
-      toggleAttendance, todayAttendance,
-      updatePayrollStatus, runPayroll,
+      toggleAttendance, todayAttendance, setAttendanceStatus,
+      updatePayrollStatus, runPayroll, approveAllPayroll,
       addInvoice, updateInvoice,
       addAnnouncement,
       markNotificationRead, markAllNotificationsRead, pushNotification,
