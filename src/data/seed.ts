@@ -127,7 +127,7 @@ export const attendance: AttendanceRecord[] = (() => {
         checkIn: status === "Absent" || status === "On Leave" ? undefined : `0${randInt(8, 10)}:${randInt(10, 59)}`,
         checkOut: status === "Absent" || status === "On Leave" ? undefined : `1${randInt(7, 9)}:${randInt(10, 59)}`,
         status,
-        hours: status === "Present" ? randInt(8, 10) : status === "Half Day" ? 4 : 0,
+        hours: status === "Present" ? randInt(8, 10) : status === "Late" ? 7 : 0,
         companyId: e.companyId,
       });
     }
