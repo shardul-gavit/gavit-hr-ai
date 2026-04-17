@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,10 +8,14 @@ import { AuthProvider, useAuth, ROLE_HOME } from "@/store/Auth";
 import { AppDataProvider } from "@/store/AppData";
 import { AppShell } from "@/components/layout/AppShell";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import SuperAdminDashboard from "./pages/admin/Dashboard";
 import CompaniesPage from "./pages/admin/Companies";
 import EmployeesPage from "./pages/shared/Employees";
+import EmployeeProfile from "./pages/shared/EmployeeProfile";
+import OnboardingPage from "./pages/shared/Onboarding";
 import SupportCenter from "./pages/shared/SupportCenter";
 import {
   LeavePage, AttendancePage, PayrollPage, BillingPage, DocumentsPage, RecruitmentPage,
@@ -25,8 +30,11 @@ const queryClient = new QueryClient();
 
 function RoleHome() {
   const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={ROLE_HOME[user.role]} replace />;
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate(user ? ROLE_HOME[user.role] : "/login", { replace: true });
+  }, [user, navigate]);
+  return null;
 }
 
 function Protected({ children, allow }: { children: JSX.Element; allow?: Role[] }) {
@@ -59,6 +67,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<RoleHome />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Super Admin */}
               <Route path="/admin" element={<Protected allow={["super_admin"]}><SuperAdminDashboard /></Protected>} />
@@ -72,11 +82,13 @@ const App = () => (
               <Route path="/admin/audit" element={<Protected allow={["super_admin"]}><AuditPage /></Protected>} />
               <Route path="/admin/settings" element={<Protected allow={["super_admin"]}><SettingsPage /></Protected>} />
               <Route path="/admin/reports" element={<Protected allow={["super_admin"]}><ReportsPage /></Protected>} />
+              <Route path="/admin/onboarding" element={<Protected allow={["super_admin"]}><OnboardingPage /></Protected>} />
 
               {/* Company Admin */}
               <Route path="/company" element={<Protected allow={["company_admin"]}><CompanyAdminDashboard /></Protected>} />
               <Route path="/company/hr-team" element={<Protected allow={["company_admin"]}><HRTeamPage /></Protected>} />
               <Route path="/company/employees" element={<Protected allow={["company_admin", "hr"]}><EmployeesPage /></Protected>} />
+              <Route path="/company/employees/:id" element={<Protected allow={["company_admin", "hr"]}><EmployeeProfile /></Protected>} />
               <Route path="/company/payroll" element={<Protected allow={["company_admin"]}><PayrollPage /></Protected>} />
               <Route path="/company/attendance" element={<Protected allow={["company_admin"]}><AttendancePage /></Protected>} />
               <Route path="/company/leave" element={<Protected allow={["company_admin"]}><LeavePage /></Protected>} />
@@ -84,10 +96,12 @@ const App = () => (
               <Route path="/company/reports" element={<Protected allow={["company_admin"]}><CompanyReportsPage /></Protected>} />
               <Route path="/company/announcements" element={<Protected allow={["company_admin"]}><AnnouncementsPage /></Protected>} />
               <Route path="/company/settings" element={<Protected allow={["company_admin"]}><SettingsPage /></Protected>} />
+              <Route path="/company/onboarding" element={<Protected allow={["company_admin"]}><OnboardingPage /></Protected>} />
 
               {/* HR */}
               <Route path="/hr" element={<Protected allow={["hr"]}><HRDashboard /></Protected>} />
               <Route path="/hr/employees" element={<Protected allow={["hr"]}><EmployeesPage /></Protected>} />
+              <Route path="/hr/employees/:id" element={<Protected allow={["hr"]}><EmployeeProfile /></Protected>} />
               <Route path="/hr/attendance" element={<Protected allow={["hr"]}><AttendancePage /></Protected>} />
               <Route path="/hr/leave" element={<Protected allow={["hr"]}><LeavePage /></Protected>} />
               <Route path="/hr/payroll" element={<Protected allow={["hr"]}><PayrollPage /></Protected>} />
@@ -96,6 +110,7 @@ const App = () => (
               <Route path="/hr/support" element={<Protected allow={["hr"]}><SupportCenter scope="company" /></Protected>} />
               <Route path="/hr/reports" element={<Protected allow={["hr"]}><HRReportsPage /></Protected>} />
               <Route path="/hr/kb" element={<Protected allow={["hr"]}><KnowledgeBasePage /></Protected>} />
+              <Route path="/hr/onboarding" element={<Protected allow={["hr"]}><OnboardingPage /></Protected>} />
 
               {/* Employee */}
               <Route path="/me" element={<Protected allow={["employee"]}><EmployeeDashboard /></Protected>} />
@@ -107,6 +122,7 @@ const App = () => (
               <Route path="/me/chatbot" element={<Protected allow={["employee"]}><ChatbotPage /></Protected>} />
               <Route path="/me/announcements" element={<Protected allow={["employee"]}><NotificationsPage /></Protected>} />
               <Route path="/me/profile" element={<Protected allow={["employee"]}><ProfilePage /></Protected>} />
+              <Route path="/me/onboarding" element={<Protected allow={["employee"]}><OnboardingPage /></Protected>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
