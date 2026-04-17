@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth, ROLE_HOME, ROLE_LABEL } from "@/store/Auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,8 +35,18 @@ export default function Login() {
 
   const manualLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error("Please enter email and password");
+      return;
+    }
     setLoading("manual");
-    setTimeout(() => doLogin("company_admin"), 500);
+    // Best-effort role inference from email domain — purely for the demo
+    const inferred: Role =
+      /admin@gavit/i.test(email) ? "super_admin" :
+      /^hr|hr@|\.hr@/i.test(email) ? "hr" :
+      /ceo|founder|admin@/i.test(email) ? "company_admin" :
+      "employee";
+    setTimeout(() => doLogin(inferred), 500);
   };
 
   return (
@@ -107,16 +117,16 @@ export default function Login() {
           <form onSubmit={manualLogin} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email">Work email</Label>
-              <Input id="email" type="email" placeholder="you@company.in" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11" />
+              <Input id="email" type="email" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} className="h-11" autoComplete="email" />
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="pwd">Password</Label>
-                <button type="button" onClick={() => toast.info("Password reset link sent to your email")} className="text-xs text-primary font-medium hover:underline">Forgot password?</button>
+                <Link to="/forgot-password" className="text-xs text-primary font-medium hover:underline">Forgot password?</Link>
               </div>
               <div className="relative">
-                <Input id="pwd" type={showPwd ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 pr-10" />
-                <button type="button" onClick={() => setShowPwd((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <Input id="pwd" type={showPwd ? "text" : "password"} placeholder="Enter your password" value={password} onChange={(e) => setPassword(e.target.value)} className="h-11 pr-10" autoComplete="current-password" />
+                <button type="button" onClick={() => setShowPwd((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Toggle password visibility">
                   {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
