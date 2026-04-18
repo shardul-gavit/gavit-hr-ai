@@ -646,16 +646,17 @@ export function HRTeamPage() {
 /* ============ DASHBOARDS ============ */
 export function CompanyAdminDashboard() {
   const { employees, leaves, tickets, payroll, announcements } = useAppData();
+  const navigate = useNavigate();
   return (
     <>
       <PageHeader title="Company Dashboard" description="Tata Innovations Pvt Ltd · Active subscription"
-        actions={<Button onClick={() => toast.success("HR Manager invited")}><Plus className="h-4 w-4 mr-1.5" />Add HR</Button>}
+        actions={<Button onClick={() => navigate("/company/hr-team")}><Plus className="h-4 w-4 mr-1.5" />Add HR</Button>}
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Employees" value={248} icon={Users} tone="primary" trend={{ value: 4.2 }} />
-        <StatCard label="Active Today" value={221} icon={CheckCircle2} tone="success" />
-        <StatCard label="Pending Leaves" value={leaves.filter((l) => l.status === "Pending").length} icon={Calendar} tone="warning" />
-        <StatCard label="Open Tickets" value={tickets.filter((t) => t.status !== "Closed" && t.status !== "Resolved").length} icon={Bot} tone="info" />
+        <StatCard label="Total Employees" value={248} icon={Users} tone="primary" trend={{ value: 4.2 }} onClick={() => navigate("/company/employees")} />
+        <StatCard label="Active Today" value={221} icon={CheckCircle2} tone="success" onClick={() => navigate("/company/attendance")} />
+        <StatCard label="Pending Leaves" value={leaves.filter((l) => l.status === "Pending").length} icon={Calendar} tone="warning" onClick={() => navigate("/company/leave")} />
+        <StatCard label="Open Tickets" value={tickets.filter((t) => t.status !== "Closed" && t.status !== "Resolved").length} icon={Bot} tone="info" onClick={() => navigate("/company/support?status=Open")} />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2"><CardHeader><CardTitle className="text-base font-display">Attendance Summary</CardTitle></CardHeader><CardContent>
