@@ -18,6 +18,7 @@ import { Plus, Download, Calendar, Wallet, Users, CheckCircle2, XCircle, Clock, 
 import { toast } from "sonner";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { format, subMonths } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import type { Role } from "@/types";
 
 const months = Array.from({ length: 6 }).map((_, i) => ({ m: format(subMonths(new Date(), 5 - i), "MMM"), v: 30 + i * 8 + Math.floor(Math.random() * 12), v2: 20 + i * 5 + Math.floor(Math.random() * 8) }));
@@ -625,20 +626,49 @@ export function CompanyReportsPage() { return <ReportsPage />; }
 export function HRReportsPage() { return <ReportsPage />; }
 
 export function HRTeamPage() {
+  const [open, setOpen] = useState(false);
+  const [members, setMembers] = useState([
+    {n:"Priya Mehta",d:"HR Manager",e:"priya.hr@tin.in"},
+    {n:"Rohit Aggarwal",d:"HR Executive",e:"rohit.hr@tin.in"},
+    {n:"Anita Kapoor",d:"Recruiter",e:"anita.hr@tin.in"},
+  ]);
+  const [form, setForm] = useState({ n: "", d: "HR Executive", e: "" });
   return (
     <>
       <PageHeader title="HR Team" description="Manage your HR managers and admins"
-        actions={<Button onClick={() => toast.success("HR Manager invite sent")}><Plus className="h-4 w-4 mr-1.5" />Add HR Manager</Button>}
+        actions={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1.5" />Add HR Manager</Button>}
       />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[{n:"Priya Mehta",d:"HR Manager",e:"priya.hr@tin.in"},{n:"Rohit Aggarwal",d:"HR Executive",e:"rohit.hr@tin.in"},{n:"Anita Kapoor",d:"Recruiter",e:"anita.hr@tin.in"}].map((p) => (
-          <Card key={p.n}><CardContent className="p-5 text-center">
+        {members.map((p) => (
+          <Card key={p.e}><CardContent className="p-5 text-center">
             <div className="h-16 w-16 rounded-2xl gradient-primary mx-auto grid place-items-center text-white font-bold text-lg">{p.n.split(" ").map((n) => n[0]).join("")}</div>
             <p className="font-semibold mt-3">{p.n}</p><p className="text-xs text-muted-foreground">{p.d}</p><p className="text-xs text-muted-foreground mt-0.5">{p.e}</p>
-            <div className="flex gap-2 mt-3"><Button size="sm" variant="outline" className="flex-1">View</Button><Button size="sm" variant="outline" className="flex-1">Edit</Button></div>
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => toast.info(`Viewing ${p.n}`)}>View</Button>
+              <Button size="sm" variant="outline" className="flex-1" onClick={() => toast.info(`Edit form for ${p.n}`)}>Edit</Button>
+            </div>
           </CardContent></Card>
         ))}
       </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add HR team member</DialogTitle><DialogDescription>Invite a new HR manager or executive.</DialogDescription></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Full name *</Label><Input value={form.n} onChange={(e) => setForm({ ...form, n: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Designation</Label>
+              <Select value={form.d} onValueChange={(v) => setForm({ ...form, d: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["HR Manager","HR Executive","Recruiter","HR Business Partner"].map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5"><Label>Email *</Label><Input type="email" value={form.e} onChange={(e) => setForm({ ...form, e: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={() => { if (!form.n || !form.e) return toast.error("Fill required fields"); setMembers((m) => [...m, form]); toast.success(`${form.n} invited`); setForm({ n: "", d: "HR Executive", e: "" }); setOpen(false); }}>Send Invite</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -646,16 +676,17 @@ export function HRTeamPage() {
 /* ============ DASHBOARDS ============ */
 export function CompanyAdminDashboard() {
   const { employees, leaves, tickets, payroll, announcements } = useAppData();
+  const navigate = useNavigate();
   return (
     <>
       <PageHeader title="Company Dashboard" description="Tata Innovations Pvt Ltd · Active subscription"
-        actions={<Button onClick={() => toast.success("HR Manager invited")}><Plus className="h-4 w-4 mr-1.5" />Add HR</Button>}
+        actions={<Button onClick={() => navigate("/company/hr-team")}><Plus className="h-4 w-4 mr-1.5" />Add HR</Button>}
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Employees" value={248} icon={Users} tone="primary" trend={{ value: 4.2 }} />
-        <StatCard label="Active Today" value={221} icon={CheckCircle2} tone="success" />
-        <StatCard label="Pending Leaves" value={leaves.filter((l) => l.status === "Pending").length} icon={Calendar} tone="warning" />
-        <StatCard label="Open Tickets" value={tickets.filter((t) => t.status !== "Closed" && t.status !== "Resolved").length} icon={Bot} tone="info" />
+        <StatCard label="Total Employees" value={248} icon={Users} tone="primary" trend={{ value: 4.2 }} onClick={() => navigate("/company/employees")} />
+        <StatCard label="Active Today" value={221} icon={CheckCircle2} tone="success" onClick={() => navigate("/company/attendance")} />
+        <StatCard label="Pending Leaves" value={leaves.filter((l) => l.status === "Pending").length} icon={Calendar} tone="warning" onClick={() => navigate("/company/leave")} />
+        <StatCard label="Open Tickets" value={tickets.filter((t) => t.status !== "Closed" && t.status !== "Resolved").length} icon={Bot} tone="info" onClick={() => navigate("/company/support?status=Open")} />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2"><CardHeader><CardTitle className="text-base font-display">Attendance Summary</CardTitle></CardHeader><CardContent>
@@ -680,18 +711,19 @@ export function CompanyAdminDashboard() {
 
 export function HRDashboard() {
   const { leaves, tickets, payroll, candidates } = useAppData();
+  const navigate = useNavigate();
   return (
     <>
       <PageHeader title="HR Operations" description="Daily HR command center for Tata Innovations" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Employees" value={248} icon={Users} tone="primary" />
-        <StatCard label="Present Today" value={221} icon={CheckCircle2} tone="success" />
-        <StatCard label="Pending Leaves" value={leaves.filter((l) => l.status === "Pending").length} icon={Calendar} tone="warning" />
-        <StatCard label="Payroll Pending" value={payroll.filter((p) => p.status === "Pending Approval").length} icon={Wallet} tone="info" />
-        <StatCard label="Open Queries" value={tickets.filter((t) => t.status !== "Closed").length} icon={Bot} tone="primary" />
-        <StatCard label="Documents Today" value={12} icon={FileText} tone="success" />
-        <StatCard label="New Applications" value={candidates.filter((c) => c.status === "Applied").length} icon={Briefcase} tone="info" />
-        <StatCard label="Joining This Month" value={5} icon={Sparkles} tone="accent" />
+        <StatCard label="Total Employees" value={248} icon={Users} tone="primary" onClick={() => navigate("/hr/employees")} />
+        <StatCard label="Present Today" value={221} icon={CheckCircle2} tone="success" onClick={() => navigate("/hr/attendance")} />
+        <StatCard label="Pending Leaves" value={leaves.filter((l) => l.status === "Pending").length} icon={Calendar} tone="warning" onClick={() => navigate("/hr/leave")} />
+        <StatCard label="Payroll Pending" value={payroll.filter((p) => p.status === "Pending Approval").length} icon={Wallet} tone="info" onClick={() => navigate("/hr/payroll")} />
+        <StatCard label="Open Queries" value={tickets.filter((t) => t.status !== "Closed").length} icon={Bot} tone="primary" onClick={() => navigate("/hr/support?status=Open")} />
+        <StatCard label="Documents Today" value={12} icon={FileText} tone="success" onClick={() => navigate("/hr/documents")} />
+        <StatCard label="New Applications" value={candidates.filter((c) => c.status === "Applied").length} icon={Briefcase} tone="info" onClick={() => navigate("/hr/recruitment")} />
+        <StatCard label="Joining This Month" value={5} icon={Sparkles} tone="accent" onClick={() => navigate("/hr/onboarding")} />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card><CardHeader><CardTitle className="text-base font-display">Pending Leave Approvals</CardTitle></CardHeader><CardContent className="space-y-2">

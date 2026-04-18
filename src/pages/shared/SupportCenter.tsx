@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAppData } from "@/store/AppData";
 import { useAuth } from "@/store/Auth";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -13,21 +14,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { LifeBuoy, AlertCircle, CheckCircle2, Clock, Plus, Search, Send, Paperclip, ArrowUpCircle, Lock, AlertTriangle } from "lucide-react";
+import { LifeBuoy, AlertCircle, CheckCircle2, Clock, Plus, Search, Send, Paperclip, ArrowUpCircle, Lock, UserCog, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Ticket, TicketStatus, TicketPriority } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 
 const STATUSES: TicketStatus[] = ["Open", "Assigned", "In Progress", "Waiting for User", "Escalated", "Resolved", "Closed"];
+const ASSIGNEES = [
+  "Priya Mehta · HR Manager",
+  "Rohit Aggarwal · HR Executive",
+  "Aditya Gavit · Gavit Super Admin",
+  "Gavit Support Desk · L2",
+];
 
 export default function SupportCenter({ scope = "all" }: { scope?: "all" | "company" | "mine" }) {
   const { user } = useAuth();
-  const { tickets, addTicket, updateTicketStatus, addTicketReply, pushAudit, pushNotification } = useAppData();
+  const { tickets, addTicket, updateTicketStatus, addTicketReply, assignTicket, pushAudit, pushNotification } = useAppData();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [statusTab, setStatusTab] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [statusTab, setStatusTab] = useState<string>(searchParams.get("status") || "all");
+  const [priorityFilter, setPriorityFilter] = useState<string>(searchParams.get("priority") || "all");
   const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = searchParams.get("status");
+    if (s) setStatusTab(s);
+  }, [searchParams]);
 
   const scoped = useMemo(() => {
     let list = tickets;
@@ -60,10 +73,10 @@ export default function SupportCenter({ scope = "all" }: { scope?: "all" | "comp
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Tickets" value={stats.total} icon={LifeBuoy} tone="primary" />
-        <StatCard label="Open / In Progress" value={stats.open} icon={Clock} tone="info" />
-        <StatCard label="Escalated" value={stats.escalated} icon={AlertCircle} tone="destructive" />
-        <StatCard label="Resolved" value={stats.resolved} icon={CheckCircle2} tone="success" />
+        <StatCard label="Total Tickets" value={stats.total} icon={LifeBuoy} tone="primary" onClick={() => setStatusTab("all")} />
+        <StatCard label="Open / In Progress" value={stats.open} icon={Clock} tone="info" onClick={() => setStatusTab("Open")} />
+        <StatCard label="Escalated" value={stats.escalated} icon={AlertCircle} tone="destructive" onClick={() => setStatusTab("Escalated")} />
+        <StatCard label="Resolved" value={stats.resolved} icon={CheckCircle2} tone="success" onClick={() => setStatusTab("Resolved")} />
       </div>
 
       <Card>
@@ -129,9 +142,10 @@ export default function SupportCenter({ scope = "all" }: { scope?: "all" | "comp
           {active && (
             <TicketDetail
               ticket={active}
-              onStatusChange={(s) => { updateTicketStatus(active.id, s); toast.success(`Ticket marked as ${s}`); }}
+              onStatusChange={(s) => { updateTicketStatus(active.id, s); pushAudit({ user: user!.name, role: user!.role, action: `Ticket → ${s}`, module: "Support", companyName: active.companyName, status: "Success" }); toast.success(`Ticket marked as ${s}`); }}
               onReply={(msg) => { addTicketReply(active.id, { author: user!.name, role: user!.role, message: msg }); toast.success("Reply sent"); }}
-              onEscalate={() => { updateTicketStatus(active.id, "Escalated"); pushNotification({ title: "Ticket escalated", message: `${active.id} escalated to Gavit Super Admin`, category: "support" }); toast.warning("Ticket escalated to Super Admin"); }}
+              onAssign={(assignee) => { assignTicket(active.id, assignee); pushAudit({ user: user!.name, role: user!.role, action: `Assigned to ${assignee}`, module: "Support", companyName: active.companyName, status: "Success" }); pushNotification({ title: "Ticket assigned", message: `${active.id} → ${assignee}`, category: "support" }); toast.success(`Assigned to ${assignee}`); }}
+              onEscalate={() => { updateTicketStatus(active.id, "Escalated"); assignTicket(active.id, "Aditya Gavit · Gavit Super Admin"); pushAudit({ user: user!.name, role: user!.role, action: "Escalated to Super Admin", module: "Support", companyName: active.companyName, status: "Success" }); pushNotification({ title: "Ticket escalated", message: `${active.id} escalated to Gavit Super Admin`, category: "support" }); toast.warning("Ticket escalated to Super Admin"); }}
               onResolve={() => { updateTicketStatus(active.id, "Resolved"); toast.success("Ticket resolved"); }}
               onClose={() => { updateTicketStatus(active.id, "Closed"); toast.success("Ticket closed"); }}
             />
@@ -179,8 +193,14 @@ function CreateTicketDialog({ open, onClose, onCreate }: { open: boolean; onClos
   );
 }
 
-function TicketDetail({ ticket, onStatusChange, onReply, onEscalate, onResolve, onClose }: { ticket: Ticket; onStatusChange: (s: TicketStatus) => void; onReply: (m: string) => void; onEscalate: () => void; onResolve: () => void; onClose: () => void }) {
+function TicketDetail({ ticket, onStatusChange, onReply, onAssign, onEscalate, onResolve, onClose }: { ticket: Ticket; onStatusChange: (s: TicketStatus) => void; onReply: (m: string) => void; onAssign: (a: string) => void; onEscalate: () => void; onResolve: () => void; onClose: () => void }) {
   const [reply, setReply] = useState("");
+  const escalationStages = [
+    { label: "Employee", active: true, done: true },
+    { label: "HR Team", active: !!ticket.assignedTo || ticket.status !== "Open", done: ticket.status !== "Open" },
+    { label: "Gavit Super Admin", active: ticket.status === "Escalated" || ticket.assignedTo?.includes("Gavit"), done: ticket.status === "Escalated" || !!ticket.assignedTo?.includes("Gavit") },
+    { label: "Resolved", active: ticket.status === "Resolved" || ticket.status === "Closed", done: ticket.status === "Resolved" || ticket.status === "Closed" },
+  ];
   return (
     <>
       <SheetHeader>
@@ -198,6 +218,18 @@ function TicketDetail({ ticket, onStatusChange, onReply, onEscalate, onResolve, 
       </SheetHeader>
 
       <div className="mt-5 space-y-4">
+        <div className="rounded-lg border bg-secondary/30 p-3">
+          <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-2">Escalation Chain</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {escalationStages.map((s, i) => (
+              <div key={s.label} className="flex items-center gap-1.5">
+                <span className={`text-[11px] px-2 py-1 rounded-full font-semibold ${s.done ? "bg-primary text-primary-foreground" : s.active ? "bg-primary-soft text-primary" : "bg-secondary text-muted-foreground"}`}>{s.label}</span>
+                {i < escalationStages.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="rounded-lg bg-secondary/50 p-3 text-sm space-y-1">
           <div className="flex justify-between"><span className="text-muted-foreground">Raised by</span><span className="font-semibold">{ticket.raisedBy}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Company</span><span className="font-semibold">{ticket.companyName}</span></div>
@@ -226,20 +258,32 @@ function TicketDetail({ ticket, onStatusChange, onReply, onEscalate, onResolve, 
 
         <div className="space-y-2">
           <Textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply..." />
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={() => { if (!reply.trim()) return; onReply(reply); setReply(""); }}><Send className="h-4 w-4 mr-1.5" />Send Reply</Button>
             <Button variant="outline" onClick={() => toast.info("Internal note saved (visible to support team only)")}><Lock className="h-4 w-4 mr-1.5" />Internal Note</Button>
           </div>
         </div>
 
-        <div className="rounded-lg border p-3 space-y-2">
+        <div className="rounded-lg border p-3 space-y-3">
           <p className="text-xs font-semibold uppercase text-muted-foreground">Actions</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><UserCog className="h-3 w-3" />Assign to</Label>
+              <Select value={ticket.assignedTo || ""} onValueChange={onAssign}>
+                <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                <SelectContent>{ASSIGNEES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Status</Label>
+              <Select value={ticket.status} onValueChange={(v: any) => onStatusChange(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            <Select value={ticket.status} onValueChange={(v: any) => onStatusChange(v)}>
-              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-            </Select>
-            {ticket.status !== "Escalated" && <Button variant="outline" size="sm" onClick={onEscalate}><ArrowUpCircle className="h-4 w-4 mr-1.5" />Escalate</Button>}
+            {ticket.status !== "Escalated" && <Button variant="outline" size="sm" onClick={onEscalate}><ArrowUpCircle className="h-4 w-4 mr-1.5" />Escalate to Super Admin</Button>}
             {ticket.status !== "Resolved" && <Button size="sm" className="bg-success hover:bg-success/90" onClick={onResolve}><CheckCircle2 className="h-4 w-4 mr-1.5" />Mark Resolved</Button>}
             {ticket.status !== "Closed" && <Button variant="outline" size="sm" onClick={onClose}>Close Ticket</Button>}
           </div>

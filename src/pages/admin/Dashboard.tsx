@@ -5,6 +5,11 @@ import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Users, AlertTriangle, LifeBuoy, IndianRupee, AlertCircle, Activity, Plus, Send, Megaphone, Bot } from "lucide-react";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, BarChart, Bar, LineChart, Line, CartesianGrid, Legend } from "recharts";
 import { useNavigate } from "react-router-dom";
@@ -25,12 +30,14 @@ const monthsData = Array.from({ length: 8 }).map((_, i) => {
 export default function SuperAdminDashboard() {
   const { companies, employees, tickets, invoices, addAnnouncement, pushNotification } = useAppData();
   const navigate = useNavigate();
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [bForm, setBForm] = useState({ title: "", description: "", audience: "All" as "All" | "HR" | "Employees" | "Admins" });
 
   const stats = useMemo(() => ({
     total: companies.length,
     active: companies.filter((c) => c.status === "Active").length,
     suspended: companies.filter((c) => c.status === "Suspended").length,
-    employees: employees.length + 950, // platform-wide
+    employees: employees.length + 950,
     pendingTickets: tickets.filter((t) => ["Open", "Assigned", "In Progress"].includes(t.status)).length,
     escalated: tickets.filter((t) => t.status === "Escalated").length,
     revenue: companies.reduce((s, c) => s + c.monthlyRevenue, 0),
@@ -48,7 +55,7 @@ export default function SuperAdminDashboard() {
         description="Master view of every company, ticket, invoice & escalation across Gavit HR AI."
         actions={
           <>
-            <Button variant="outline" onClick={() => { toast.success("Announcement broadcast to all companies"); pushNotification({ title: "Platform announcement sent", message: "Broadcast delivered to all 10 companies", category: "announcement" }); }}>
+            <Button variant="outline" onClick={() => setBroadcastOpen(true)}>
               <Megaphone className="h-4 w-4 mr-1.5" /> Broadcast
             </Button>
             <Button onClick={() => navigate("/admin/companies")}>
@@ -58,14 +65,41 @@ export default function SuperAdminDashboard() {
         }
       />
 
+      <Dialog open={broadcastOpen} onOpenChange={setBroadcastOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Broadcast announcement</DialogTitle><DialogDescription>This will be delivered to all companies on the platform.</DialogDescription></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5"><Label>Title *</Label><Input value={bForm.title} onChange={(e) => setBForm({ ...bForm, title: e.target.value })} placeholder="Platform maintenance notice" /></div>
+            <div className="space-y-1.5"><Label>Message *</Label><Textarea rows={4} value={bForm.description} onChange={(e) => setBForm({ ...bForm, description: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Audience</Label>
+              <Select value={bForm.audience} onValueChange={(v: any) => setBForm({ ...bForm, audience: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{["All","HR","Employees","Admins"].map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBroadcastOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!bForm.title || !bForm.description) return toast.error("Fill title and message");
+              addAnnouncement({ title: bForm.title, description: bForm.description, category: "General", audience: bForm.audience, status: "Published" });
+              pushNotification({ title: "Broadcast sent", message: bForm.title, category: "announcement" });
+              toast.success(`Broadcast delivered to ${companies.length} companies`);
+              setBForm({ title: "", description: "", audience: "All" });
+              setBroadcastOpen(false);
+            }}><Send className="h-4 w-4 mr-1.5" />Send Broadcast</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Companies" value={stats.total} icon={Building2} tone="primary" trend={{ value: 12.5 }} hint="+1 this month" />
-        <StatCard label="Active" value={stats.active} icon={Activity} tone="success" hint="Healthy operations" />
-        <StatCard label="Suspended" value={stats.suspended} icon={AlertTriangle} tone="destructive" hint="Action required" />
-        <StatCard label="Total Employees" value={`${(stats.employees / 1000).toFixed(1)}K`} icon={Users} tone="info" trend={{ value: 8.2 }} />
-        <StatCard label="Pending Tickets" value={stats.pendingTickets} icon={LifeBuoy} tone="warning" onClick={() => navigate("/admin/support")} />
-        <StatCard label="Escalated" value={stats.escalated} icon={AlertCircle} tone="destructive" onClick={() => navigate("/admin/support")} />
-        <StatCard label="Monthly Revenue" value={`₹${(stats.revenue / 100000).toFixed(2)}L`} icon={IndianRupee} tone="success" trend={{ value: 14.3 }} />
+        <StatCard label="Total Companies" value={stats.total} icon={Building2} tone="primary" trend={{ value: 12.5 }} hint="+1 this month" onClick={() => navigate("/admin/companies")} />
+        <StatCard label="Active" value={stats.active} icon={Activity} tone="success" hint="Healthy operations" onClick={() => navigate("/admin/companies")} />
+        <StatCard label="Suspended" value={stats.suspended} icon={AlertTriangle} tone="destructive" hint="Action required" onClick={() => navigate("/admin/companies")} />
+        <StatCard label="Total Employees" value={`${(stats.employees / 1000).toFixed(1)}K`} icon={Users} tone="info" trend={{ value: 8.2 }} onClick={() => navigate("/admin/companies")} />
+        <StatCard label="Pending Tickets" value={stats.pendingTickets} icon={LifeBuoy} tone="warning" onClick={() => navigate("/admin/support?status=Open")} />
+        <StatCard label="Escalated" value={stats.escalated} icon={AlertCircle} tone="destructive" onClick={() => navigate("/admin/support?status=Escalated")} />
+        <StatCard label="Monthly Revenue" value={`₹${(stats.revenue / 100000).toFixed(2)}L`} icon={IndianRupee} tone="success" trend={{ value: 14.3 }} onClick={() => navigate("/admin/billing")} />
         <StatCard label="Overdue Payments" value={stats.overdue} icon={AlertCircle} tone="warning" onClick={() => navigate("/admin/billing")} />
       </div>
 

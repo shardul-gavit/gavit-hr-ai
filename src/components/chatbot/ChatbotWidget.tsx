@@ -14,7 +14,7 @@ import { toast } from "sonner";
 export function ChatbotWidget() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { tickets, leaves, payroll, companies, invoices } = useAppData();
+  const { tickets, leaves, payroll, companies, invoices, addTicket, pushNotification, pushAudit } = useAppData();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -78,16 +78,45 @@ export function ChatbotWidget() {
       toast.success("Opening page...");
       return;
     }
-    if (intent.startsWith("ticket_")) {
-      navigate(user.role === "employee" ? "/me/support" : "/hr/support");
-      setOpen(false);
-      toast.info("Opening support center to raise your ticket");
+    if (intent.startsWith("ticket_") || intent === "raise_payroll_ticket") {
+      const catMap: Record<string, any> = {
+        ticket_payroll: "Payroll Issue",
+        ticket_attendance: "Attendance Issue",
+        ticket_leave: "Leave Issue",
+        ticket_general: "General Support",
+        raise_payroll_ticket: "Payroll Issue",
+      };
+      const category = catMap[intent] || "General Support";
+      const t = addTicket({
+        subject: `${category} raised via chatbot`,
+        description: `Auto-generated from chatbot by ${user.name}. Please review.`,
+        category,
+        priority: "Medium",
+        raisedBy: user.name,
+        raisedByRole: user.role,
+        companyId: user.companyId || "c1",
+        companyName: user.companyName || "Gavit Platform",
+        status: "Open",
+      });
+      pushNotification({ title: "Ticket created from chatbot", message: `${t.id} - ${t.subject}`, category: "support" });
+      pushAudit({ user: user.name, role: user.role, action: "Created Ticket via Chatbot", module: "Support", companyName: user.companyName || "Gavit", status: "Success" });
+      const botMsg: ChatMessage = {
+        id: `b-${Date.now()}`, role: "bot", timestamp: new Date().toISOString(),
+        content: `✅ Ticket ${t.id} created and assigned to your HR team. They'll respond shortly.`,
+        card: { title: t.id, rows: [
+          { label: "Category", value: category },
+          { label: "Priority", value: "Medium" },
+          { label: "Status", value: "Open" },
+        ]},
+        actions: [{ label: "Open Ticket", intent: "open_my_support" }],
+      };
+      setMessages((p) => [...p, botMsg]);
+      toast.success(`Ticket ${t.id} created`);
       return;
     }
-    if (intent === "raise_payroll_ticket") {
-      navigate(user.role === "employee" ? "/me/support" : "/hr/support");
+    if (intent === "open_my_support") {
+      navigate(user.role === "employee" ? "/me/support" : user.role === "hr" ? "/hr/support" : user.role === "company_admin" ? "/company/support" : "/admin/support");
       setOpen(false);
-      toast.info("Opening support to raise payroll ticket");
       return;
     }
     if (intent === "approve_payroll") {
