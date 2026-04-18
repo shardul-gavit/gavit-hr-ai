@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAppData } from "@/store/AppData";
 import { useAuth } from "@/store/Auth";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -13,21 +14,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { LifeBuoy, AlertCircle, CheckCircle2, Clock, Plus, Search, Send, Paperclip, ArrowUpCircle, Lock, AlertTriangle } from "lucide-react";
+import { LifeBuoy, AlertCircle, CheckCircle2, Clock, Plus, Search, Send, Paperclip, ArrowUpCircle, Lock, UserCog, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Ticket, TicketStatus, TicketPriority } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 
 const STATUSES: TicketStatus[] = ["Open", "Assigned", "In Progress", "Waiting for User", "Escalated", "Resolved", "Closed"];
+const ASSIGNEES = [
+  "Priya Mehta · HR Manager",
+  "Rohit Aggarwal · HR Executive",
+  "Aditya Gavit · Gavit Super Admin",
+  "Gavit Support Desk · L2",
+];
 
 export default function SupportCenter({ scope = "all" }: { scope?: "all" | "company" | "mine" }) {
   const { user } = useAuth();
-  const { tickets, addTicket, updateTicketStatus, addTicketReply, pushAudit, pushNotification } = useAppData();
+  const { tickets, addTicket, updateTicketStatus, addTicketReply, assignTicket, pushAudit, pushNotification } = useAppData();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [statusTab, setStatusTab] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [statusTab, setStatusTab] = useState<string>(searchParams.get("status") || "all");
+  const [priorityFilter, setPriorityFilter] = useState<string>(searchParams.get("priority") || "all");
   const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = searchParams.get("status");
+    if (s) setStatusTab(s);
+  }, [searchParams]);
 
   const scoped = useMemo(() => {
     let list = tickets;
