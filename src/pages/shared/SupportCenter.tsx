@@ -142,9 +142,10 @@ export default function SupportCenter({ scope = "all" }: { scope?: "all" | "comp
           {active && (
             <TicketDetail
               ticket={active}
-              onStatusChange={(s) => { updateTicketStatus(active.id, s); toast.success(`Ticket marked as ${s}`); }}
+              onStatusChange={(s) => { updateTicketStatus(active.id, s); pushAudit({ user: user!.name, role: user!.role, action: `Ticket → ${s}`, module: "Support", companyName: active.companyName, status: "Success" }); toast.success(`Ticket marked as ${s}`); }}
               onReply={(msg) => { addTicketReply(active.id, { author: user!.name, role: user!.role, message: msg }); toast.success("Reply sent"); }}
-              onEscalate={() => { updateTicketStatus(active.id, "Escalated"); pushNotification({ title: "Ticket escalated", message: `${active.id} escalated to Gavit Super Admin`, category: "support" }); toast.warning("Ticket escalated to Super Admin"); }}
+              onAssign={(assignee) => { assignTicket(active.id, assignee); pushAudit({ user: user!.name, role: user!.role, action: `Assigned to ${assignee}`, module: "Support", companyName: active.companyName, status: "Success" }); pushNotification({ title: "Ticket assigned", message: `${active.id} → ${assignee}`, category: "support" }); toast.success(`Assigned to ${assignee}`); }}
+              onEscalate={() => { updateTicketStatus(active.id, "Escalated"); assignTicket(active.id, "Aditya Gavit · Gavit Super Admin"); pushAudit({ user: user!.name, role: user!.role, action: "Escalated to Super Admin", module: "Support", companyName: active.companyName, status: "Success" }); pushNotification({ title: "Ticket escalated", message: `${active.id} escalated to Gavit Super Admin`, category: "support" }); toast.warning("Ticket escalated to Super Admin"); }}
               onResolve={() => { updateTicketStatus(active.id, "Resolved"); toast.success("Ticket resolved"); }}
               onClose={() => { updateTicketStatus(active.id, "Closed"); toast.success("Ticket closed"); }}
             />
