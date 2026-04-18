@@ -193,8 +193,14 @@ function CreateTicketDialog({ open, onClose, onCreate }: { open: boolean; onClos
   );
 }
 
-function TicketDetail({ ticket, onStatusChange, onReply, onEscalate, onResolve, onClose }: { ticket: Ticket; onStatusChange: (s: TicketStatus) => void; onReply: (m: string) => void; onEscalate: () => void; onResolve: () => void; onClose: () => void }) {
+function TicketDetail({ ticket, onStatusChange, onReply, onAssign, onEscalate, onResolve, onClose }: { ticket: Ticket; onStatusChange: (s: TicketStatus) => void; onReply: (m: string) => void; onAssign: (a: string) => void; onEscalate: () => void; onResolve: () => void; onClose: () => void }) {
   const [reply, setReply] = useState("");
+  const escalationStages = [
+    { label: "Employee", active: true, done: true },
+    { label: "HR Team", active: !!ticket.assignedTo || ticket.status !== "Open", done: ticket.status !== "Open" },
+    { label: "Gavit Super Admin", active: ticket.status === "Escalated" || ticket.assignedTo?.includes("Gavit"), done: ticket.status === "Escalated" || !!ticket.assignedTo?.includes("Gavit") },
+    { label: "Resolved", active: ticket.status === "Resolved" || ticket.status === "Closed", done: ticket.status === "Resolved" || ticket.status === "Closed" },
+  ];
   return (
     <>
       <SheetHeader>
@@ -212,6 +218,18 @@ function TicketDetail({ ticket, onStatusChange, onReply, onEscalate, onResolve, 
       </SheetHeader>
 
       <div className="mt-5 space-y-4">
+        <div className="rounded-lg border bg-secondary/30 p-3">
+          <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-2">Escalation Chain</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {escalationStages.map((s, i) => (
+              <div key={s.label} className="flex items-center gap-1.5">
+                <span className={`text-[11px] px-2 py-1 rounded-full font-semibold ${s.done ? "bg-primary text-primary-foreground" : s.active ? "bg-primary-soft text-primary" : "bg-secondary text-muted-foreground"}`}>{s.label}</span>
+                {i < escalationStages.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground" />}
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="rounded-lg bg-secondary/50 p-3 text-sm space-y-1">
           <div className="flex justify-between"><span className="text-muted-foreground">Raised by</span><span className="font-semibold">{ticket.raisedBy}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">Company</span><span className="font-semibold">{ticket.companyName}</span></div>
@@ -240,20 +258,32 @@ function TicketDetail({ ticket, onStatusChange, onReply, onEscalate, onResolve, 
 
         <div className="space-y-2">
           <Textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply..." />
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button onClick={() => { if (!reply.trim()) return; onReply(reply); setReply(""); }}><Send className="h-4 w-4 mr-1.5" />Send Reply</Button>
             <Button variant="outline" onClick={() => toast.info("Internal note saved (visible to support team only)")}><Lock className="h-4 w-4 mr-1.5" />Internal Note</Button>
           </div>
         </div>
 
-        <div className="rounded-lg border p-3 space-y-2">
+        <div className="rounded-lg border p-3 space-y-3">
           <p className="text-xs font-semibold uppercase text-muted-foreground">Actions</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground flex items-center gap-1"><UserCog className="h-3 w-3" />Assign to</Label>
+              <Select value={ticket.assignedTo || ""} onValueChange={onAssign}>
+                <SelectTrigger><SelectValue placeholder="Select assignee" /></SelectTrigger>
+                <SelectContent>{ASSIGNEES.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Status</Label>
+              <Select value={ticket.status} onValueChange={(v: any) => onStatusChange(v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="flex flex-wrap gap-2">
-            <Select value={ticket.status} onValueChange={(v: any) => onStatusChange(v)}>
-              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-            </Select>
-            {ticket.status !== "Escalated" && <Button variant="outline" size="sm" onClick={onEscalate}><ArrowUpCircle className="h-4 w-4 mr-1.5" />Escalate</Button>}
+            {ticket.status !== "Escalated" && <Button variant="outline" size="sm" onClick={onEscalate}><ArrowUpCircle className="h-4 w-4 mr-1.5" />Escalate to Super Admin</Button>}
             {ticket.status !== "Resolved" && <Button size="sm" className="bg-success hover:bg-success/90" onClick={onResolve}><CheckCircle2 className="h-4 w-4 mr-1.5" />Mark Resolved</Button>}
             {ticket.status !== "Closed" && <Button variant="outline" size="sm" onClick={onClose}>Close Ticket</Button>}
           </div>
