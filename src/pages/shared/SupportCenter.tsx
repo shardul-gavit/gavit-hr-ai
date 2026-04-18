@@ -73,10 +73,10 @@ export default function SupportCenter({ scope = "all" }: { scope?: "all" | "comp
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard label="Total Tickets" value={stats.total} icon={LifeBuoy} tone="primary" />
-        <StatCard label="Open / In Progress" value={stats.open} icon={Clock} tone="info" />
-        <StatCard label="Escalated" value={stats.escalated} icon={AlertCircle} tone="destructive" />
-        <StatCard label="Resolved" value={stats.resolved} icon={CheckCircle2} tone="success" />
+        <StatCard label="Total Tickets" value={stats.total} icon={LifeBuoy} tone="primary" onClick={() => setStatusTab("all")} />
+        <StatCard label="Open / In Progress" value={stats.open} icon={Clock} tone="info" onClick={() => setStatusTab("Open")} />
+        <StatCard label="Escalated" value={stats.escalated} icon={AlertCircle} tone="destructive" onClick={() => setStatusTab("Escalated")} />
+        <StatCard label="Resolved" value={stats.resolved} icon={CheckCircle2} tone="success" onClick={() => setStatusTab("Resolved")} />
       </div>
 
       <Card>
