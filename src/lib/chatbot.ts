@@ -3,7 +3,7 @@ import type { Role, ChatMessage } from "@/types";
 interface BotContext {
   role: Role;
   userName: string;
-  // demo data slices the bot can read
+  // Runtime data slices provided by app state
   data: {
     leaveBalance?: number;
     pendingLeaves?: number;

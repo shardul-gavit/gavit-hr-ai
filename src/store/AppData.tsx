@@ -55,23 +55,24 @@ interface AppDataState {
 }
 
 const AppDataContext = createContext<AppDataState | null>(null);
+const demoDataEnabled = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEMO_DATA === "true";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const nowIso = () => new Date().toISOString();
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [companies, setCompanies] = useState(seedCompanies);
-  const [employees, setEmployees] = useState(seedEmployees);
-  const [tickets, setTickets] = useState(seedTickets);
-  const [leaves, setLeaves] = useState(seedLeaves);
-  const [attendance, setAttendance] = useState(seedAttendance);
-  const [payroll, setPayroll] = useState(seedPayroll);
-  const [invoices, setInvoices] = useState(seedInvoices);
-  const [announcements, setAnnouncements] = useState(seedAnnouncements);
-  const [notifications, setNotifications] = useState(seedNotifications);
-  const [candidates, setCandidates] = useState(seedCandidates);
-  const [jobs, setJobs] = useState(seedJobs);
-  const [audit, setAudit] = useState(seedAudit);
+  const [companies, setCompanies] = useState<Company[]>(() => (demoDataEnabled ? seedCompanies : []));
+  const [employees, setEmployees] = useState<Employee[]>(() => (demoDataEnabled ? seedEmployees : []));
+  const [tickets, setTickets] = useState<Ticket[]>(() => (demoDataEnabled ? seedTickets : []));
+  const [leaves, setLeaves] = useState<LeaveRequest[]>(() => (demoDataEnabled ? seedLeaves : []));
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(() => (demoDataEnabled ? seedAttendance : []));
+  const [payroll, setPayroll] = useState<PayrollEntry[]>(() => (demoDataEnabled ? seedPayroll : []));
+  const [invoices, setInvoices] = useState<Invoice[]>(() => (demoDataEnabled ? seedInvoices : []));
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => (demoDataEnabled ? seedAnnouncements : []));
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => (demoDataEnabled ? seedNotifications : []));
+  const [candidates, setCandidates] = useState<Candidate[]>(() => (demoDataEnabled ? seedCandidates : []));
+  const [jobs, setJobs] = useState<JobOpening[]>(() => (demoDataEnabled ? seedJobs : []));
+  const [audit, setAudit] = useState<AuditLog[]>(() => (demoDataEnabled ? seedAudit : []));
 
   const addCompany: AppDataState["addCompany"] = useCallback((c) => {
     const newC: Company = { ...c, id: `c${Date.now()}`, createdAt: todayIso() };

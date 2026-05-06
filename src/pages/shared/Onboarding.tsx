@@ -27,8 +27,7 @@ const STEPS: Step[] = [
 export default function OnboardingPage() {
   const { user } = useAuth();
   const { pushNotification } = useAppData();
-  // Pre-mark first 2 steps done for demo realism
-  const [done, setDone] = useState<Record<string, boolean>>({ account: true, documents: true });
+  const [done, setDone] = useState<Record<string, boolean>>({});
   const completed = useMemo(() => STEPS.filter((s) => done[s.key]).length, [done]);
   const percent = Math.round((completed / STEPS.length) * 100);
 
