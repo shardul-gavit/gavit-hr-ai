@@ -5,16 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, Eye, EyeOff, Shield, Building2, UserCog, User, ArrowRight, CheckCircle2, BarChart3, MessageCircle, Bot, Lock } from "lucide-react";
+import { Sparkles, Eye, EyeOff, ArrowRight, BarChart3, MessageCircle, Bot, Lock } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/types";
-
-const roleCards: { role: Role; icon: any; tone: string; desc: string }[] = [
-  { role: "super_admin", icon: Shield, tone: "from-primary to-primary-glow", desc: "Gavit E-Services platform owner. Manage all companies, billing & escalations." },
-  { role: "company_admin", icon: Building2, tone: "from-info to-primary", desc: "Manage your company, HR team, payroll runs and announcements." },
-  { role: "hr", icon: UserCog, tone: "from-success to-info", desc: "Daily HR operations: employees, attendance, leave & payroll." },
-  { role: "employee", icon: User, tone: "from-accent to-warning", desc: "Self-service portal for attendance, leave, payslips and support." },
-];
+import { supabase } from "@/lib/supabase";
 
 export default function Login() {
   const { login } = useAuth();
@@ -24,29 +18,37 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState<Role | "manual" | null>(null);
 
-  const doLogin = (role: Role) => {
-    setLoading(role);
-    setTimeout(() => {
-      const u = login(role);
-      toast.success(`Welcome back, ${u.name.split(" ")[0]}!`, { description: `Signed in as ${ROLE_LABEL[role]}` });
-      navigate(ROLE_HOME[role]);
-    }, 500);
-  };
-
-  const manualLogin = (e: React.FormEvent) => {
+  const manualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error("Please enter email and password");
       return;
     }
+
     setLoading("manual");
-    // Best-effort role inference from email domain — purely for the demo
-    const inferred: Role =
-      /admin@gavit/i.test(email) ? "super_admin" :
-      /^hr|hr@|\.hr@/i.test(email) ? "hr" :
-      /ceo|founder|admin@/i.test(email) ? "company_admin" :
-      "employee";
-    setTimeout(() => doLogin(inferred), 500);
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setLoading(null);
+      toast.error("Unable to sign in", { description: error.message });
+      return;
+    }
+
+    const authUser = data.user;
+    const metadataRole = authUser?.user_metadata?.role;
+    const role: Role =
+      metadataRole === "super_admin" || metadataRole === "company_admin" || metadataRole === "hr" || metadataRole === "employee"
+        ? metadataRole
+        : "employee";
+
+    login({
+      id: authUser.id,
+      name: (authUser.user_metadata?.full_name as string) || authUser.email?.split("@")[0] || "User",
+      email: authUser.email || email,
+      role,
+    });
+    toast.success("Welcome back!", { description: `Signed in as ${ROLE_LABEL[role]}` });
+    navigate(ROLE_HOME[role]);
+    setLoading(null);
   };
 
   return (
@@ -140,30 +142,6 @@ export default function Login() {
               <ArrowRight className="h-4 w-4 ml-1.5" />
             </Button>
           </form>
-
-          <div className="my-6 flex items-center gap-3">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Try a demo dashboard</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5">
-            {roleCards.map((c) => (
-              <button
-                key={c.role}
-                onClick={() => doLogin(c.role)}
-                disabled={!!loading}
-                className="group relative text-left rounded-xl border border-border bg-card p-3.5 hover:border-primary/40 hover:shadow-md transition-all duration-200 disabled:opacity-60"
-              >
-                <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${c.tone} grid place-items-center mb-2.5 shadow-sm`}>
-                  <c.icon className="h-4.5 w-4.5 text-white" />
-                </div>
-                <p className="font-semibold text-sm">{ROLE_LABEL[c.role]}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{c.desc}</p>
-                {loading === c.role && <div className="absolute inset-0 rounded-xl bg-card/80 grid place-items-center"><CheckCircle2 className="h-5 w-5 text-primary animate-pulse" /></div>}
-              </button>
-            ))}
-          </div>
 
           <p className="text-center text-xs text-muted-foreground mt-8">
             Companies are onboarded by <span className="font-semibold text-foreground">Gavit E-Services</span>. Public self-registration is disabled.
