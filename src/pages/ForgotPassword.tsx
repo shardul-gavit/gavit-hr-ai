@@ -5,19 +5,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles, ArrowLeft, MailCheck } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return toast.error("Please enter your work email");
-    setTimeout(() => {
-      setSent(true);
-      toast.success("Password reset link sent");
-    }, 400);
+
+    const redirectTo = `${import.meta.env.VITE_SITE_URL}/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+    if (error) {
+      toast.error("Unable to send reset link", { description: error.message });
+      return;
+    }
+
+    setSent(true);
+    toast.success("Password reset link sent");
   };
 
   return (
